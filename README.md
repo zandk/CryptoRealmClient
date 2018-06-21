@@ -38,6 +38,13 @@ protoc \
   <project path>/Assets/Protobuf/sample.proto
 ```
 
+## Proto calls for me
+protoc \
+  -I/Users/Zac/protoc/protoc-3-6-0/include \
+  -I/Users/Zac/Documents/Code/GitHub/Loom/CryptoRealm/unityclient/Assets/Protobuf \
+  --csharp_out=/Users/Zac/Documents/Code/GitHub/Loom/CryptoRealm/unityclient/Assets/Protobuf \
+  /Users/Zac/Documents/Code/GitHub/Loom/CryptoRealm/unityclient/Assets/Protobuf/RealmBase.proto
+
 ## Samples
 
 The sample `authSample` scene expects a local Loom DAppChain node to be running on `localhost`, if

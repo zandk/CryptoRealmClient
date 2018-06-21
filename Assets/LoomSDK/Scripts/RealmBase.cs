@@ -1,15 +1,32 @@
 using System;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using UnityEngine;
 using Loom.Unity3d;
 using Loom.Nethereum.ABI.FunctionEncoding.Attributes;
+using Org.BouncyCastle.Math;
 
-public class SimpleStoreHandler : MonoBehaviour {
+[FunctionOutput]
+public class Tile
+{
+    [Parameter("address", "owner", 1)]
+    public string Owner {get; set;}
+
+    [Parameter("int", "x", 2)]
+    public BigInteger Description {get; set;}
+
+    [Parameter("int", "y", 3)]
+    public BigInteger Sender {get; set;}
+}
+public class RealmBase : MonoBehaviour {
 
     // Select an ABI from our project resources
     // We got these from the migration script in Truffle
-    public TextAsset simpleStoreABI;
-    public TextAsset simpleStoreAddress;
+    public TextAsset realmBaseABI;
+    public TextAsset realmBaseAddress;
+
+    // Contract object
+    public static EvmContract contract;
 
     // Use this for initialization
 	public async void Start () {
@@ -19,9 +36,7 @@ public class SimpleStoreHandler : MonoBehaviour {
         var publicKey = CryptoUtils.PublicKeyFromPrivateKey(privateKey);
 
         // Get the contract
-        var contract = await GetContract(privateKey, publicKey);
-        // Make a call
-        await StaticCallContract(contract);
+        RealmBase.contract = await GetContract(privateKey, publicKey);
 	}
 
     // Get's the contract as an object 
@@ -53,31 +68,39 @@ public class SimpleStoreHandler : MonoBehaviour {
         });
 
         // ABI of the Solidity contract
-        string abi = simpleStoreABI.ToString();
+        string abi = realmBaseABI.ToString();
         // Address of the Solidity contract
-        var contractAddr = Address.FromHexString(simpleStoreAddress.ToString());
+        var contractAddr = Address.FromHexString(realmBaseAddress.ToString());
         // Address of the user
         var callerAddr = Address.FromPublicKey(publicKey);
         // Return the Contract object
         return new EvmContract(client, contractAddr, callerAddr, abi);
     }
 
-    public async Task StaticCallContract(EvmContract contract)
+    public static async Task<int> GetTileCount()
     {
-        if (contract == null)
+        if (RealmBase.contract == null)
         {
             throw new Exception("Not signed in!");
         }
 
         Debug.Log("Calling smart contract...");
 
-        int result = await contract.StaticCallSimpleTypeOutputAsync<int>("get");
-        if (result != null)
+        int result = await RealmBase.contract.StaticCallSimpleTypeOutputAsync<int>("GetTileCount");
+        Debug.Log("Smart contract returned: " + result);
+        return result;
+    }
+
+    public static async void GetTile(int id)
+    {
+        if (RealmBase.contract == null)
         {
-            Debug.Log("Smart contract returned: " + result);
-        } else
-        {
-            Debug.LogError("Smart contract didn't return anything!");
+            throw new Exception("Not signed in!");
         }
+
+        Debug.Log("Calling smart contract...");
+
+        Tile result = await RealmBase.contract.StaticCallDTOTypeOutputAsync<Tile>("GetTile", id);
+        Debug.Log("Smart contract returned: " + result);
     }
 }
