@@ -12,8 +12,11 @@ using UnityEngine;
 
 public class TileManager : MonoBehaviour {
 
+	// Prefab for a hex
+	public GameObject hexPrefab;
+
 	// Store tiles in a map id->tile
-	// private Dictionary<int, Tile> tiles;
+	private Dictionary<int, Tile> tiles = new Dictionary<int, Tile>();
 
 	// Have we already loaded the initial tile set?
 	bool alreadyLoadedInitialTiles = false;
@@ -29,9 +32,15 @@ public class TileManager : MonoBehaviour {
 	async void Update () {
 		if (!alreadyLoadedInitialTiles && RealmBase.contract != null) {
 			alreadyLoadedInitialTiles = true;
-			RealmBase.GetTile(0);
 			tileCount = await RealmBase.GetTileCount();
 			for (int i = 0; i < tileCount; i++) {
+				Tile t = await RealmBase.GetTile(i);
+				print(i + ": " + t.X + ", " + t.Y);
+				var x = 18 * (Mathf.Sqrt(3) * t.X  +  Mathf.Sqrt(3)/2f * t.Y);
+        var y = 20 * (3f/2f * t.Y);
+				t.gameObject = Instantiate(hexPrefab, new Vector3(x, 0, y), Quaternion.identity);
+
+				tiles.Add(i, t);
 				// tiles[i] = new Tile();
 			}
 		}

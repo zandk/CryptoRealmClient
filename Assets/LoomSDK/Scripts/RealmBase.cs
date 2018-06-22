@@ -13,10 +13,11 @@ public class Tile
     public string Owner {get; set;}
 
     [Parameter("int", "x", 2)]
-    public BigInteger Description {get; set;}
+    public Int64 X {get; set;}
 
     [Parameter("int", "y", 3)]
-    public BigInteger Sender {get; set;}
+    public Int64 Y {get; set;}
+    public GameObject gameObject;
 }
 public class RealmBase : MonoBehaviour {
 
@@ -91,7 +92,7 @@ public class RealmBase : MonoBehaviour {
         return result;
     }
 
-    public static async void GetTile(int id)
+    public static async Task<Tile> GetTile(int id)
     {
         if (RealmBase.contract == null)
         {
@@ -102,5 +103,6 @@ public class RealmBase : MonoBehaviour {
 
         Tile result = await RealmBase.contract.StaticCallDTOTypeOutputAsync<Tile>("GetTile", id);
         Debug.Log("Smart contract returned: " + result);
+        return result;
     }
 }
