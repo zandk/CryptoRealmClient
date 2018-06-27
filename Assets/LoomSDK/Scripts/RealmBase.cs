@@ -5,9 +5,10 @@ using UnityEngine;
 using Loom.Unity3d;
 using Loom.Nethereum.ABI.FunctionEncoding.Attributes;
 using Org.BouncyCastle.Math;
+using Newtonsoft.Json;
 
 [FunctionOutput]
-public class Tile
+public class TileData
 {
     [Parameter("address", "owner", 1)]
     public string Owner {get; set;}
@@ -17,8 +18,23 @@ public class Tile
 
     [Parameter("int", "y", 3)]
     public Int64 Y {get; set;}
-    public GameObject gameObject;
+    public uint id;
 }
+
+public class OnUpdateTileOwnerEvent
+{
+    [Parameter("uint", "tileId", 1)]
+    public BigInteger TileId {get; set;}
+    [Parameter("address", "newOwner", 2)]
+    public string NewOwner {get; set;}
+}
+
+public class OnNewTileEvent
+{
+    [Parameter("uint", "tileId", 1)]
+    public BigInteger TileId {get; set;}
+}
+
 public class RealmBase : MonoBehaviour {
 
     // Select an ABI from our project resources
@@ -78,6 +94,23 @@ public class RealmBase : MonoBehaviour {
         return new EvmContract(client, contractAddr, callerAddr, abi);
     }
 
+    // -----
+    // METHOD CALLS
+    // -----
+    public static async Task<bool> ClaimTile(uint id) {
+        if (RealmBase.contract == null)
+        {
+            throw new Exception("Not signed in!");
+        }
+
+        bool result = await RealmBase.contract.CallSimpleTypeOutputAsync<bool>("ClaimTile", new BigInteger(id.ToString()));
+        return result;
+    }
+
+    // -----
+    // STATIC CALLS
+    // -----
+
     public static async Task<int> GetTileCount()
     {
         if (RealmBase.contract == null)
@@ -85,14 +118,12 @@ public class RealmBase : MonoBehaviour {
             throw new Exception("Not signed in!");
         }
 
-        Debug.Log("Calling smart contract...");
-
         int result = await RealmBase.contract.StaticCallSimpleTypeOutputAsync<int>("GetTileCount");
         Debug.Log("Smart contract returned: " + result);
         return result;
     }
 
-    public static async Task<Tile> GetTile(int id)
+    public static async Task<TileData> GetTile(uint id)
     {
         if (RealmBase.contract == null)
         {
@@ -101,7 +132,7 @@ public class RealmBase : MonoBehaviour {
 
         Debug.Log("Calling smart contract...");
 
-        Tile result = await RealmBase.contract.StaticCallDTOTypeOutputAsync<Tile>("GetTile", id);
+        TileData result = await RealmBase.contract.StaticCallDTOTypeOutputAsync<TileData>("GetTile", id);
         Debug.Log("Smart contract returned: " + result);
         return result;
     }

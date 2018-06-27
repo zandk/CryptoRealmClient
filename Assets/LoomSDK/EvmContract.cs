@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Google.Protobuf;
 using Loom.Nethereum.ABI.Model;
 using Loom.Nethereum.Contracts;
 using Loom.Nethereum.RPC.Eth.DTOs;
 
 namespace Loom.Unity3d
 {
+    using Protobuf = Internal.Protobuf;
+
     /// <summary>
     /// The EvmContract class streamlines interaction with a smart contract that was deployed on a EVM-based Loom DAppChain.
     /// Each instance of this class is bound to a specific smart contract, and provides a simple way of calling
@@ -16,7 +17,7 @@ namespace Loom.Unity3d
     public class EvmContract : ContractBase<EvmChainEventArgs>
     {
         private readonly ContractBuilder contractBuilder;
-        private readonly Dictionary<byte[], string> topicToEventName;
+        private readonly Dictionary<string, string> topicToEventName;
 
         /// <summary>
         /// Constructor.
@@ -26,11 +27,11 @@ namespace Loom.Unity3d
         /// <param name="callerAddr">Address of the caller, generated from the public key of the tx signer.</param>
         /// <param name="abi">Contract Application Binary Interface as JSON object string.</param>
         public EvmContract(DAppChainClient client, Address contractAddr, Address callerAddr, string abi) : base(client, contractAddr, callerAddr) {
-            this.contractBuilder = new ContractBuilder(abi, contractAddr.LocalAddressHexString);
-            this.topicToEventName = new Dictionary<byte[], string>(new ByteArrayComparer());
+            this.contractBuilder = new ContractBuilder(abi, contractAddr.LocalAddress);
+            this.topicToEventName = new Dictionary<string, string>();
             foreach (EventABI eventAbi in this.contractBuilder.ContractABI.Events)
             {
-                this.topicToEventName.Add(CryptoUtils.HexStringToBytes(eventAbi.Sha33Signature), eventAbi.Name);
+                this.topicToEventName.Add(eventAbi.Sha33Signature, eventAbi.Name);
             }
         }
 
@@ -263,26 +264,26 @@ namespace Loom.Unity3d
         #endregion
 
         protected override EvmChainEventArgs TransformChainEvent(RawChainEventArgs e) {
-            Event evt = new Event();
-            evt.MergeFrom(e.Data);
+            if (e.Topics == null)
+                throw new ArgumentNullException("topics");
 
-            byte[][] topics = new byte[evt.Topics.Count][];
-            for (int i = 0; i < evt.Topics.Count; i++)
+            for (int i = 0; i < e.Topics.Length; i++)
             {
-                topics[i] = evt.Topics[i].ToByteArray();
+                // Remove 0x
+                e.Topics[i] = e.Topics[i].Substring(2);
             }
 
             // First topic is a signature of event itself
             string eventName;
-            this.topicToEventName.TryGetValue(topics[0], out eventName);
+            this.topicToEventName.TryGetValue(e.Topics[0], out eventName);
 
             return new EvmChainEventArgs(
                 e.ContractAddress,
                 e.CallerAddress,
                 e.BlockHeight,
-                evt.Data.ToByteArray(),
-                topics,
-                eventName
+                e.Data,
+                eventName,
+                e.Topics
             );
         }
 
@@ -290,7 +291,7 @@ namespace Loom.Unity3d
 
         private async Task<byte[]> StaticCallAsyncByteArray(string callInput)
         {
-            return await this.client.QueryAsync<byte[]>(this.Address, CryptoUtils.HexStringToBytes(callInput), this.Caller, VMType.Evm);
+            return await this.client.QueryAsync<byte[]>(this.Address, CryptoUtils.HexStringToBytes(callInput), this.Caller, Protobuf::VMType.Evm);
         }
 
         private async Task StaticCallAsync(string callInput)
@@ -308,7 +309,7 @@ namespace Loom.Unity3d
 
         private async Task<BroadcastTxResult> CallAsyncBrodcastTxResult(string callInput)
         {
-            var tx = this.CreateContractMethodCallTx(callInput, VMType.Evm);
+            var tx = this.CreateContractMethodCallTx(callInput, Protobuf::VMType.Evm);
             return await this.client.CommitTxAsync(tx);
         }
 
@@ -319,7 +320,7 @@ namespace Loom.Unity3d
 
         private async Task<TReturn> CallAsync<TReturn>(string callInput, FunctionBuilderBase functionBuilder, Func<FunctionBuilderBase, string, TReturn> decodeFunc)
         {
-            var tx = this.CreateContractMethodCallTx(callInput, VMType.Evm);
+            var tx = this.CreateContractMethodCallTx(callInput, Protobuf::VMType.Evm);
             var result = await this.client.CommitTxAsync(tx);
             var validResult = result?.DeliverTx.Data != null && result.DeliverTx.Data.Length != 0;
             return validResult ? decodeFunc(functionBuilder, CryptoUtils.BytesToHexString(result.DeliverTx.Data)) : default(TReturn);
@@ -339,54 +340,20 @@ namespace Loom.Unity3d
             return callInput.Data;
         }
 
-        private Transaction CreateContractMethodCallTx(string method, object[] functionInput, out FunctionBuilder functionBuilder)
+        private Protobuf::Transaction CreateContractMethodCallTx(string method, object[] functionInput, out FunctionBuilder functionBuilder)
         {
             functionBuilder = this.contractBuilder.GetFunctionBuilder(method);
             CallInput callInput = functionBuilder.CreateCallInput(functionInput);
-            return this.CreateContractMethodCallTx(callInput.Data, VMType.Evm);
+            return this.CreateContractMethodCallTx(callInput.Data, Protobuf::VMType.Evm);
         }
 
-        private Transaction CreateContractMethodCallTx<TInput>(TInput functionInput, out FunctionBuilder<TInput> functionBuilder)
+        private Protobuf::Transaction CreateContractMethodCallTx<TInput>(TInput functionInput, out FunctionBuilder<TInput> functionBuilder)
         {
             functionBuilder = this.contractBuilder.GetFunctionBuilder<TInput>();
             CallInput callInput = functionBuilder.CreateCallInput(functionInput);
-            return this.CreateContractMethodCallTx(callInput.Data, VMType.Evm);
+            return this.CreateContractMethodCallTx(callInput.Data, Protobuf::VMType.Evm);
         }
 
         #endregion
-
-        private class ByteArrayComparer : EqualityComparer<byte[]>
-        {
-            public override bool Equals(byte[] left, byte[] right)
-            {
-                if (left == null || right == null)
-                    return left == right;
-
-                if (left.Length != right.Length)
-                    return false;
-
-                for (int i = 0; i < left.Length; i++)
-                {
-                    if (left[i] != right[i])
-                        return false;
-                }
-
-                return true;
-            }
-
-            public override int GetHashCode(byte[] key)
-            {
-                if (key == null)
-                    throw new ArgumentNullException("key");
-
-                int hash = 17;
-                for (int i = 0; i < key.Length; i++)
-                {
-                    hash += hash * 31 + key[i];
-                }
-
-                return hash;
-            }
-        }
     }
 }

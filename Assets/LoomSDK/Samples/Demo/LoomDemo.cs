@@ -47,14 +47,14 @@ public class LoomDemo : MonoBehaviour
 
         var writer = RPCClientFactory.Configure()
             .WithLogger(Debug.unityLogger)
-            .WithHTTP("http://127.0.0.1:46658/rpc")
-            // .WithWebSocket("ws://127.0.0.1:46657/websocket")
+            //.WithHTTP("http://127.0.0.1:46658/rpc")
+            .WithWebSocket("ws://127.0.0.1:46657/websocket")
             .Create();
 
         var reader = RPCClientFactory.Configure()
             .WithLogger(Debug.unityLogger)
-            .WithHTTP("http://127.0.0.1:46658/query")
-            // .WithWebSocket("ws://127.0.0.1:9999/queryws")
+            //.WithHTTP("http://127.0.0.1:46658/query")
+            .WithWebSocket("ws://127.0.0.1:9999/queryws")
             .Create();
 
         var client = new DAppChainClient(writer, reader)
@@ -70,7 +70,7 @@ public class LoomDemo : MonoBehaviour
             new SignedTxMiddleware(privateKey)
         });
 
-        var contractAddr = await client.ResolveContractAddressAsync("SimpleStore");
+        var contractAddr = await client.ResolveContractAddressAsync("BluePrint");
         this.contract = new Contract(client, contractAddr, callerAddr);
 
         // Subscribe to DAppChainClient.OnChainEvent to receive all events
