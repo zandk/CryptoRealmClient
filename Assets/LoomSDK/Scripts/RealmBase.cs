@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,6 +7,7 @@ using Loom.Unity3d;
 using Loom.Nethereum.ABI.FunctionEncoding.Attributes;
 using Org.BouncyCastle.Math;
 using Newtonsoft.Json;
+using System.Runtime.Serialization.Formatters.Binary;
 
 [FunctionOutput]
 public class TileData
@@ -35,6 +37,16 @@ public class OnNewTileEvent
     public BigInteger TileId {get; set;}
 }
 
+[Serializable]
+public class AccountData {
+    public byte[] PrivateKey;
+    public byte[] PublicKey;
+    public AccountData(byte[] privateKey, byte[] publicKey) {
+        PrivateKey = privateKey;
+        PublicKey = publicKey;
+    }
+}
+
 public class RealmBase : MonoBehaviour {
 
     // Select an ABI from our project resources
@@ -49,12 +61,45 @@ public class RealmBase : MonoBehaviour {
 	public async void Start () {
         // Generate new keys for this user
         // TODO - Either store these or let the user enter a private key
-        var privateKey = CryptoUtils.GeneratePrivateKey();
-        var publicKey = CryptoUtils.PublicKeyFromPrivateKey(privateKey);
+        // var privateKey = CryptoUtils.GeneratePrivateKey();
+        // var publicKey = CryptoUtils.PublicKeyFromPrivateKey(privateKey);
+        // var accountData = new AccountData(privateKey, publicKey);
+        var accountData = LoadAccountData();
+        if (accountData == null) {
+            CreateAccountData();
+        }
+        
+        
+        print("Private key: " + accountData.PrivateKey);
 
         // Get the contract
-        RealmBase.contract = await GetContract(privateKey, publicKey);
+        RealmBase.contract = await GetContract(accountData.PrivateKey, accountData.PublicKey);
 	}
+
+    // Save account data
+    AccountData CreateAccountData() {
+        var privateKey = CryptoUtils.GeneratePrivateKey();
+        var publicKey = CryptoUtils.PublicKeyFromPrivateKey(privateKey);
+        AccountData accountData = new AccountData(privateKey, publicKey);
+        BinaryFormatter bf = new BinaryFormatter();
+        FileStream file = File.Create(Application.persistentDataPath + "/account.dat");
+        bf.Serialize(file, accountData);
+        file.Close();
+        return accountData;
+    }
+
+    // // Attempt to load account data
+    AccountData LoadAccountData() {
+        if (File.Exists(Application.persistentDataPath + "/account.dat")) {
+            BinaryFormatter bf = new BinaryFormatter();
+            FileStream file = File.Open(Application.persistentDataPath + "/account.dat", FileMode.Open);
+            AccountData accountData = (AccountData)bf.Deserialize(file);
+            file.Close();
+            return accountData;
+        } else {
+            return null;
+        }
+    }
 
     // Get's the contract as an object 
     async Task<EvmContract> GetContract(byte[] privateKey, byte[] publicKey)
@@ -105,6 +150,16 @@ public class RealmBase : MonoBehaviour {
 
         bool result = await RealmBase.contract.CallSimpleTypeOutputAsync<bool>("ClaimTile", new BigInteger(id.ToString()));
         return result;
+    }
+
+    public static void SpreadTile(uint id) {
+        if (RealmBase.contract == null)
+        {
+            throw new Exception("Not signed in!");
+        }
+        print("Spreading tile!!: " + id);
+
+        RealmBase.contract.CallAsync("SpreadTile", new BigInteger(id.ToString()));
     }
 
     // -----

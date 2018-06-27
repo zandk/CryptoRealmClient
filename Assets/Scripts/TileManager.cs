@@ -55,6 +55,8 @@ public class TileManager : MonoBehaviour {
 					// print(i + ": " + t.X + ", " + t.Y);
 					// Add tile object to map
 					SpawnNewTileObject(i);
+
+					await new WaitForSeconds(0.01f);
 					
 					// tiles[i] = new Tile();
 				}
@@ -102,7 +104,7 @@ public class TileManager : MonoBehaviour {
 		var newTileObject = Instantiate(hexPrefab, new Vector3(x, 0, z), Quaternion.identity);
 		newTileObject.transform.Rotate(0, 90, 0);
 		// Instantiate new tile object
-		newTileObject.GetComponent<TileScript>().tileData = t;
+		newTileObject.GetComponent<TileScript>().SetTileData(t);
 		tileObjs.Add(id, newTileObject);
 	}
 }
