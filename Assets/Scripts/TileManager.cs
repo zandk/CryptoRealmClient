@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Loom.Unity3d;
 using Loom.Nethereum.ABI.FunctionEncoding.Attributes;
+using Org.BouncyCastle.Math;
 
 // public struct Tile {
 // 	public int x, y;
@@ -56,7 +57,7 @@ public class TileManager : MonoBehaviour {
 					// Add tile object to map
 					SpawnNewTileObject(i);
 
-					await new WaitForSeconds(0.01f);
+					await new WaitForSeconds(0.0005f);
 					
 					// tiles[i] = new Tile();
 				}
@@ -85,12 +86,16 @@ public class TileManager : MonoBehaviour {
 				uint id = (uint)updateTileOwnerEvent.TileId.IntValue;
 				string newOwner = updateTileOwnerEvent.NewOwner;
 				tileObjs[id].GetComponent<TileScript>().UpdateOwner(newOwner);
+			} else if (e.EventName == "OnUpdateTileImprovement") {
+				OnUpdateTileImprovementEvent updateTileImprovementEvent = e.DecodeEventDTO<OnUpdateTileImprovementEvent>();
+				uint id = (uint)updateTileImprovementEvent.TileId.IntValue;
+				BigInteger improvementId = updateTileImprovementEvent.ImprovementId;
+				tileObjs[id].GetComponent<TileScript>().UpdateImprovement(improvementId);
 			}
 		}
 	}
 
 	async void SpawnNewTileObject(uint id) {
-		print("New Tile: " + id);
 		// Attempt to get the Tile data from the network
 		TileData t = await RealmBase.GetTile(id);
 		if (t == null) {

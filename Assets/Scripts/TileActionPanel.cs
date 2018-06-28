@@ -34,12 +34,12 @@ public class TileActionPanel : MonoBehaviour {
 		RealmBase.ClaimTile(targetTileData.id);
 	}
 
-	// Call when the spread button is pressed
-	public void OnSpreadButtonPress() {
+	// Call when the Create City button is pressed
+	public void OnCreateCityButtonPress() {
 		if (targetTileData == null)
 			return;
 		// Send the claim transaction
-		RealmBase.SpreadTile(targetTileData.id);
+		RealmBase.ImproveTile(targetTileData.id, 1);
 	}
 
 	public static void SetTargetTileData(TileData t) {

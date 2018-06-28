@@ -16,11 +16,22 @@ public class TileData
     public string Owner {get; set;}
 
     [Parameter("int", "x", 2)]
-    public Int64 X {get; set;}
+    public Int16 X {get; set;}
 
     [Parameter("int", "y", 3)]
-    public Int64 Y {get; set;}
+    public Int16 Y {get; set;}
+
+    [Parameter("uint8", "resource", 4)]
+    public uint Resource {get; set;}
+
+    [Parameter("uint8", "resourceQuantity", 5)]
+    public uint ResourceQuantity {get; set;}
+
+    [Parameter("uint8", "improvement", 6)]
+    public BigInteger Improvement {get; set;}
+
     public uint id;
+
 }
 
 public class OnUpdateTileOwnerEvent
@@ -29,6 +40,14 @@ public class OnUpdateTileOwnerEvent
     public BigInteger TileId {get; set;}
     [Parameter("address", "newOwner", 2)]
     public string NewOwner {get; set;}
+}
+
+public class OnUpdateTileImprovementEvent
+{
+    [Parameter("uint", "tileId", 1)]
+    public BigInteger TileId {get; set;}
+    [Parameter("uint8", "improvementId", 2)]
+    public BigInteger ImprovementId {get; set;}
 }
 
 public class OnNewTileEvent
@@ -57,6 +76,9 @@ public class RealmBase : MonoBehaviour {
     // Contract object
     public static EvmContract contract;
 
+    // Specify which account to use
+    public static string accountId = "";
+
     // Use this for initialization
 	public async void Start () {
         // Generate new keys for this user
@@ -66,7 +88,7 @@ public class RealmBase : MonoBehaviour {
         // var accountData = new AccountData(privateKey, publicKey);
         var accountData = LoadAccountData();
         if (accountData == null) {
-            CreateAccountData();
+            accountData = CreateAccountData();
         }
         
         
@@ -82,7 +104,7 @@ public class RealmBase : MonoBehaviour {
         var publicKey = CryptoUtils.PublicKeyFromPrivateKey(privateKey);
         AccountData accountData = new AccountData(privateKey, publicKey);
         BinaryFormatter bf = new BinaryFormatter();
-        FileStream file = File.Create(Application.persistentDataPath + "/account.dat");
+        FileStream file = File.Open(Application.persistentDataPath + "/account" + RealmBase.accountId + ".dat", FileMode.OpenOrCreate);
         bf.Serialize(file, accountData);
         file.Close();
         return accountData;
@@ -90,9 +112,9 @@ public class RealmBase : MonoBehaviour {
 
     // // Attempt to load account data
     AccountData LoadAccountData() {
-        if (File.Exists(Application.persistentDataPath + "/account.dat")) {
+        if (File.Exists(Application.persistentDataPath + "/account" + RealmBase.accountId + ".dat")) {
             BinaryFormatter bf = new BinaryFormatter();
-            FileStream file = File.Open(Application.persistentDataPath + "/account.dat", FileMode.Open);
+            FileStream file = File.Open(Application.persistentDataPath + "/account" + RealmBase.accountId + ".dat", FileMode.Open);
             AccountData accountData = (AccountData)bf.Deserialize(file);
             file.Close();
             return accountData;
@@ -152,14 +174,15 @@ public class RealmBase : MonoBehaviour {
         return result;
     }
 
-    public static void SpreadTile(uint id) {
+    public static async void ImproveTile(uint id, uint improvement) {
         if (RealmBase.contract == null)
         {
             throw new Exception("Not signed in!");
         }
-        print("Spreading tile!!: " + id);
+        print("Improving tile!!: " + id + " with: " + improvement);
 
-        RealmBase.contract.CallAsync("SpreadTile", new BigInteger(id.ToString()));
+
+        bool result = await RealmBase.contract.CallSimpleTypeOutputAsync<bool>("ImproveTile", new object[2]{new BigInteger(id.ToString()), new BigInteger(improvement.ToString())});
     }
 
     // -----
@@ -185,10 +208,7 @@ public class RealmBase : MonoBehaviour {
             throw new Exception("Not signed in!");
         }
 
-        Debug.Log("Calling smart contract...");
-
         TileData result = await RealmBase.contract.StaticCallDTOTypeOutputAsync<TileData>("GetTile", id);
-        Debug.Log("Smart contract returned: " + result);
         return result;
     }
 }

@@ -148,7 +148,7 @@ namespace Loom.Unity3d
             await this.EnsureConnectionAsync();
             var reqMsg = new JsonRpcRequest<T>(method, args, msgId);
             var reqMsgBody = JsonConvert.SerializeObject(reqMsg);
-            Logger.Log(LogTag, "[Request Body] " + reqMsgBody);
+            // Logger.Log(LogTag, "[Request Body] " + reqMsgBody);
             this.client.SendAsync(reqMsgBody, (bool success) =>
             {
                 if (success)
@@ -224,7 +224,7 @@ namespace Loom.Unity3d
             {
                 if (e.IsText && !string.IsNullOrEmpty(e.Data))
                 {
-                    Logger.Log(LogTag, "[WSSharpRPCClient_OnMessage msg body] " + e.Data);
+                    // Logger.Log(LogTag, "[WSSharpRPCClient_OnMessage msg body] " + e.Data);
                     var partialMsg = JsonConvert.DeserializeObject<JsonRpcResponse>(e.Data);
                     if (partialMsg.Id == "0")
                     {
@@ -244,7 +244,7 @@ namespace Loom.Unity3d
                 }
                 else
                 {
-                    Logger.Log(LogTag, "[WSSharpRPCClient_OnMessage ignoring msg]");
+                    // Logger.Log(LogTag, "[WSSharpRPCClient_OnMessage ignoring msg]");
                 }
             }
             catch (Exception ex)
